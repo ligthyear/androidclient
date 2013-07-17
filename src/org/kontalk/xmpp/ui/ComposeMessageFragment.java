@@ -132,6 +132,7 @@ public class ComposeMessageFragment extends SherlockListFragment implements
     private static final int CONTEXT_MENU_ATTACHMENT = 1;
     private static final int ATTACHMENT_ACTION_PICTURE = 1;
     private static final int ATTACHMENT_ACTION_CONTACT = 2;
+    private static final int ATTACHMENT_ACTION_LOCATION = 3;
     private IconContextMenu attachmentMenu;
 
 	private MessageListQueryHandler mQueryHandler;
@@ -694,6 +695,9 @@ public class ComposeMessageFragment extends SherlockListFragment implements
             case ATTACHMENT_ACTION_CONTACT:
                 selectContactAttachment();
                 break;
+            case ATTACHMENT_ACTION_LOCATION:
+                selectLocationAttachment();
+                break;
         }
     }
 
@@ -712,6 +716,7 @@ public class ComposeMessageFragment extends SherlockListFragment implements
 	        attachmentMenu = new IconContextMenu(getActivity(), CONTEXT_MENU_ATTACHMENT);
 	        attachmentMenu.addItem(getResources(), R.string.attachment_picture, R.drawable.ic_launcher_gallery, ATTACHMENT_ACTION_PICTURE);
 	        attachmentMenu.addItem(getResources(), R.string.attachment_contact, R.drawable.ic_launcher_contacts, ATTACHMENT_ACTION_CONTACT);
+	        attachmentMenu.addItem(getResources(), R.string.attachment_location, R.drawable.ic_attach_location, ATTACHMENT_ACTION_LOCATION);
 	        attachmentMenu.setOnClickListener(this);
 	    }
 	    attachmentMenu.createMenu(getString(R.string.menu_attachment)).show();
@@ -755,6 +760,10 @@ public class ComposeMessageFragment extends SherlockListFragment implements
 	private void selectContactAttachment() {
         Intent i = new Intent(Intent.ACTION_PICK, Contacts.CONTENT_URI);
         startActivityForResult(i, SELECT_ATTACHMENT_CONTACT);
+	}
+
+	private void selectLocationAttachment() {
+	    // TODO
 	}
 
 	private void showSmileysPopup(View anchor) {
