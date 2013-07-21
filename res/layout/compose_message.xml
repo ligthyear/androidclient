@@ -45,4 +45,6 @@
 
     <include layout="@layout/composer_bar"/>
 
+    <include layout="@layout/location_map"/>
+
 </LinearLayout>
