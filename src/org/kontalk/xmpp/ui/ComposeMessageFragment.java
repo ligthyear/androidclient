@@ -57,6 +57,7 @@ import org.kontalk.xmpp.util.MessageUtils;
 import org.kontalk.xmpp.util.MessageUtils.SmileyImageSpan;
 
 import android.accounts.Account;
+import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.AsyncQueryHandler;
@@ -81,6 +82,7 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.provider.ContactsContract.Contacts;
 import android.provider.MediaStore;
+import android.support.v4.app.FragmentTransaction;
 import android.support.v4.content.LocalBroadcastManager;
 import android.text.ClipboardManager;
 import android.text.Editable;
@@ -93,6 +95,8 @@ import android.view.KeyEvent;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.ViewGroup.LayoutParams;
+import android.view.ViewTreeObserver;
 import android.view.inputmethod.EditorInfo;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.AdapterView;
@@ -108,6 +112,7 @@ import com.actionbarsherlock.app.SherlockListFragment;
 import com.actionbarsherlock.view.Menu;
 import com.actionbarsherlock.view.MenuInflater;
 import com.actionbarsherlock.view.MenuItem;
+import com.google.android.gms.maps.MapFragment;
 
 
 /**
@@ -324,6 +329,20 @@ public class ComposeMessageFragment extends SherlockListFragment implements
             }
         });
 
+        final View root=getActivity().getWindow().getDecorView().findViewById(android.R.id.content);
+        root.getViewTreeObserver().addOnGlobalLayoutListener(new ViewTreeObserver.OnGlobalLayoutListener(){
+             public void onGlobalLayout(){
+                   int heightDiff = root.getRootView().getHeight()-
+                   (root.getHeight()+getActivity().getWindow().getDecorView().findViewById(android.R.id.content).getTop());
+                   Log.d(TAG,root.getRootView().getHeight()+" - "
+                   +(root.getHeight()+getActivity().getWindow().getDecorView().findViewById(android.R.id.content).getTop())
+                   +" = "+heightDiff);
+
+                   if (heightDiff > 0)
+                       MessagingPreferences.setDrawerHeight(getActivity(), heightDiff);
+             }
+          });
+
 		Configuration config = getResources().getConfiguration();
 		mIsKeyboardOpen = config.keyboardHidden == KEYBOARDHIDDEN_NO;
 		mIsLandscape = config.orientation == Configuration.ORIENTATION_LANDSCAPE;
@@ -371,6 +390,8 @@ public class ComposeMessageFragment extends SherlockListFragment implements
 		mQueryHandler = new MessageListQueryHandler();
 
 		// list adapter creation is post-poned
+
+
 	}
 
     private void submitSend() {
@@ -762,8 +783,19 @@ public class ComposeMessageFragment extends SherlockListFragment implements
         startActivityForResult(i, SELECT_ATTACHMENT_CONTACT);
 	}
 
-	private void selectLocationAttachment() {
-	    // TODO
+	@SuppressLint("NewApi")
+    private void selectLocationAttachment() {
+	    View prova=getActivity().findViewById(R.id.drawer);
+	    LayoutParams p=prova.getLayoutParams();
+	    p.height=MessagingPreferences.getDrawerHeight(getActivity());
+	    prova.setLayoutParams(p);
+
+	    android.app.Fragment f=new MapFragment();
+	    android.app.FragmentTransaction ft = getActivity().getFragmentManager().beginTransaction();
+        ft.replace(R.id.drawer, f);
+        ft.setTransition(FragmentTransaction.TRANSIT_FRAGMENT_FADE);
+        ft.addToBackStack(null);
+        ft.commit();
 	}
 
 	private void showSmileysPopup(View anchor) {
