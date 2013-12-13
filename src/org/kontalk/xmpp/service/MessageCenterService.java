@@ -53,10 +53,12 @@ import org.kontalk.xmpp.client.StanzaGroupExtensionProvider;
 import org.kontalk.xmpp.client.SubscribePublicKey;
 import org.kontalk.xmpp.client.UploadExtension;
 import org.kontalk.xmpp.client.UploadInfo;
+import org.kontalk.xmpp.client.UserLocation;
 import org.kontalk.xmpp.crypto.Coder;
 import org.kontalk.xmpp.crypto.PersonalKey;
 import org.kontalk.xmpp.message.AbstractMessage;
 import org.kontalk.xmpp.message.ImageMessage;
+import org.kontalk.xmpp.message.LocationMessage;
 import org.kontalk.xmpp.message.PlainTextMessage;
 import org.kontalk.xmpp.message.VCardMessage;
 import org.kontalk.xmpp.provider.MyMessages.Messages;
@@ -78,6 +80,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteConstraintException;
+import android.location.Location;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.net.Uri;
@@ -342,6 +345,7 @@ public class MessageCenterService extends Service implements ConnectionHelperLis
         pm.addExtensionProvider(OutOfBandData.ELEMENT_NAME, OutOfBandData.NAMESPACE, new OutOfBandData.Provider());
         pm.addExtensionProvider(BitsOfBinary.ELEMENT_NAME, BitsOfBinary.NAMESPACE, new BitsOfBinary.Provider());
         pm.addExtensionProvider(SubscribePublicKey.ELEMENT_NAME, SubscribePublicKey.NAMESPACE, new SubscribePublicKey.Provider());
+        pm.addExtensionProvider(UserLocation.ELEMENT_NAME, UserLocation.NAMESPACE, new UserLocation.Provider());
     }
 
     @Override
@@ -892,6 +896,7 @@ public class MessageCenterService extends Service implements ConnectionHelperLis
             String body = data.getString("org.kontalk.message.body");
             String key = data.getString("org.kontalk.message.encryptKey");
             String fetchUrl = data.getString("org.kontalk.message.fetch.url");
+            Location location = (Location) data.getParcelable("org.kontalk.message.location");
 
             // generate preview if needed
             String _previewUri = data.getString("org.kontalk.message.preview.uri");
@@ -944,6 +949,10 @@ public class MessageCenterService extends Service implements ConnectionHelperLis
                 // in this case we will need the length too
                 long length = data.getLong("org.kontalk.message.length");
                 m.addExtension(new OutOfBandData(fetchUrl, mime, length));
+            }
+
+            if (location != null) {
+                m.addExtension(new UserLocation(location.getLatitude(), location.getLongitude()));
             }
 
             // received receipt
@@ -1013,6 +1022,11 @@ public class MessageCenterService extends Service implements ConnectionHelperLis
                 // TODO i18n
                 content = "(error)".getBytes();
             }
+        }
+
+        else if (msg instanceof LocationMessage) {
+            values.put(Messages.GEO_LAT, ((LocationMessage) msg).getLatitude());
+            values.put(Messages.GEO_LON, ((LocationMessage) msg).getLongitude());
         }
 
         values.put(Messages.CONTENT, content);
@@ -1178,6 +1192,17 @@ public class MessageCenterService extends Service implements ConnectionHelperLis
         i.putExtra("org.kontalk.message.toUser", userId);
         i.putExtra("org.kontalk.message.body", text);
         i.putExtra("org.kontalk.message.encryptKey", encryptKey);
+        i.putExtra("org.kontalk.message.chatState", ChatState.active.name());
+        context.startService(i);
+    }
+
+    public static void sendLocationMessage(final Context context, String userId, String text, Location location, long msgId) {
+        Intent i = new Intent(context, MessageCenterService.class);
+        i.setAction(MessageCenterService.ACTION_MESSAGE);
+        i.putExtra("org.kontalk.message.msgId", msgId);
+        i.putExtra("org.kontalk.message.toUser", userId);
+        i.putExtra("org.kontalk.message.body", text);
+        i.putExtra("org.kontalk.message.location", location);
         i.putExtra("org.kontalk.message.chatState", ChatState.active.name());
         context.startService(i);
     }
@@ -1816,8 +1841,17 @@ public class MessageCenterService extends Service implements ConnectionHelperLis
 
                     // plain text message
                     if (mime == null || PlainTextMessage.supportsMimeType(mime)) {
-                        // TODO convert to global pool
-                        msg = new PlainTextMessage(MessageCenterService.this, msgId, serverTimestamp, sender, content, isEncrypted);
+
+                        PacketExtension _loc = m.getExtension(UserLocation.ELEMENT_NAME, UserLocation.NAMESPACE);
+                        if (_loc != null && _loc instanceof UserLocation) {
+                            UserLocation loc = (UserLocation) _loc;
+                            msg = new LocationMessage(MessageCenterService.this, msgId, serverTimestamp, sender, content, loc.getLatitude(), loc.getLongitude());
+                        }
+
+                        else {
+                            // TODO convert to global pool
+                            msg = new PlainTextMessage(MessageCenterService.this, msgId, serverTimestamp, sender, content, isEncrypted);
+                        }
                     }
 
                     // image message

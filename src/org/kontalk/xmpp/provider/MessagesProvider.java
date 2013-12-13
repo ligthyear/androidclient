@@ -25,8 +25,8 @@ import java.util.List;
 import org.kontalk.xmpp.R;
 import org.kontalk.xmpp.message.PlainTextMessage;
 import org.kontalk.xmpp.provider.MyMessages.Messages;
-import org.kontalk.xmpp.provider.MyMessages.Threads;
 import org.kontalk.xmpp.provider.MyMessages.Messages.Fulltext;
+import org.kontalk.xmpp.provider.MyMessages.Threads;
 import org.kontalk.xmpp.provider.MyMessages.Threads.Conversations;
 
 import android.annotation.TargetApi;
@@ -106,7 +106,9 @@ public class MessagesProvider extends ContentProvider {
             // timestamp of message accepted by server for outgoing messages
             "server_timestamp INTEGER," +
             // message length (original file length for media messages)
-            "length INTEGER NOT NULL DEFAULT 0" +
+            "length INTEGER NOT NULL DEFAULT 0," +
+            "geo_lat REAL,"+
+            "geo_lon REAL"+
             ")";
 
         /** This table will contain the latest message from each conversation. */
@@ -582,6 +584,8 @@ public class MessagesProvider extends ContentProvider {
         values.remove(Messages.ENCRYPT_KEY);
         values.remove(Messages.SERVER_TIMESTAMP);
         values.remove(Messages.LENGTH);
+        values.remove(Messages.GEO_LAT);
+        values.remove(Messages.GEO_LON);
 
         // use text content in threads instead of binary content
         Boolean encrypted = values.getAsBoolean(Messages.ENCRYPTED);
@@ -1224,6 +1228,8 @@ public class MessagesProvider extends ContentProvider {
         messagesProjectionMap.put(Messages.PREVIEW_PATH, Messages.PREVIEW_PATH);
         messagesProjectionMap.put(Messages.SERVER_TIMESTAMP, Messages.SERVER_TIMESTAMP);
         messagesProjectionMap.put(Messages.LENGTH, Messages.LENGTH);
+        messagesProjectionMap.put(Messages.GEO_LON, Messages.GEO_LON);
+        messagesProjectionMap.put(Messages.GEO_LAT, Messages.GEO_LAT);
 
         threadsProjectionMap = new HashMap<String, String>();
         threadsProjectionMap.put(Threads._ID, Threads._ID);

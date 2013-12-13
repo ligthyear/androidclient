@@ -41,6 +41,7 @@ import org.kontalk.xmpp.data.Contact;
 import org.kontalk.xmpp.data.Conversation;
 import org.kontalk.xmpp.message.AbstractMessage;
 import org.kontalk.xmpp.message.ImageMessage;
+import org.kontalk.xmpp.message.LocationMessage;
 import org.kontalk.xmpp.message.PlainTextMessage;
 import org.kontalk.xmpp.message.VCardMessage;
 import org.kontalk.xmpp.provider.MessagesProvider;
@@ -75,6 +76,10 @@ import android.database.Cursor;
 import android.database.sqlite.SQLiteException;
 import android.graphics.Color;
 import android.graphics.drawable.Drawable;
+import android.location.Criteria;
+import android.location.Location;
+import android.location.LocationListener;
+import android.location.LocationManager;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
@@ -131,6 +136,7 @@ public class ComposeMessageFragment extends SherlockListFragment implements
     private static final int CONTEXT_MENU_ATTACHMENT = 1;
     private static final int ATTACHMENT_ACTION_PICTURE = 1;
     private static final int ATTACHMENT_ACTION_CONTACT = 2;
+    private static final int ATTACHMENT_ACTION_LOCATION = 3;
     private IconContextMenu attachmentMenu;
 
 	private MessageListQueryHandler mQueryHandler;
@@ -453,10 +459,16 @@ public class ComposeMessageFragment extends SherlockListFragment implements
 
 	private final class TextMessageThread extends Thread {
 	    private final String mText;
+	    private Location mLocation;
 
 	    TextMessageThread(String text) {
 	        mText = text;
 	    }
+
+        TextMessageThread(String text, Location loc) {
+            this(text);
+            mLocation = loc;
+        }
 
 	    @Override
 	    public void run() {
@@ -489,6 +501,12 @@ public class ComposeMessageFragment extends SherlockListFragment implements
                 values.put(Messages.STATUS, Messages.STATUS_SENDING);
                 values.put(Messages.ENCRYPT_KEY, key);
                 values.put(Messages.LENGTH, bytes.length);
+
+                if (mLocation != null) {
+                    values.put(Messages.GEO_LAT, mLocation.getLatitude());
+                    values.put(Messages.GEO_LON, mLocation.getLongitude());
+                }
+
                 Uri newMsg = getActivity().getContentResolver().insert(
                         Messages.CONTENT_URI, values);
                 if (newMsg != null) {
@@ -510,8 +528,13 @@ public class ComposeMessageFragment extends SherlockListFragment implements
                     }
 
                     // send message!
-                    MessageCenterService.sendTextMessage(getActivity(),
-                        userId, mText, key, ContentUris.parseId(newMsg));
+                    if (mLocation != null) {
+                        MessageCenterService.sendLocationMessage(getActivity(),
+                                userId, mText, mLocation, ContentUris.parseId(newMsg));
+                    }
+                    else
+                        MessageCenterService.sendTextMessage(getActivity(),
+                            userId, mText, key, ContentUris.parseId(newMsg));
                 }
                 else {
                     getActivity().runOnUiThread(new Runnable() {
@@ -686,6 +709,9 @@ public class ComposeMessageFragment extends SherlockListFragment implements
             case ATTACHMENT_ACTION_CONTACT:
                 selectContactAttachment();
                 break;
+            case ATTACHMENT_ACTION_LOCATION:
+                selectLocationAttachment();
+                break;
         }
     }
 
@@ -704,6 +730,7 @@ public class ComposeMessageFragment extends SherlockListFragment implements
 	        attachmentMenu = new IconContextMenu(getActivity(), CONTEXT_MENU_ATTACHMENT);
 	        attachmentMenu.addItem(getResources(), R.string.attachment_picture, R.drawable.ic_launcher_gallery, ATTACHMENT_ACTION_PICTURE);
 	        attachmentMenu.addItem(getResources(), R.string.attachment_contact, R.drawable.ic_launcher_contacts, ATTACHMENT_ACTION_CONTACT);
+	        attachmentMenu.addItem(getResources(), "Location",R.drawable.ic_attach_location, ATTACHMENT_ACTION_LOCATION);
 	        attachmentMenu.setOnClickListener(this);
 	    }
 	    attachmentMenu.createMenu(getString(R.string.menu_attachment)).show();
@@ -747,6 +774,34 @@ public class ComposeMessageFragment extends SherlockListFragment implements
 	private void selectContactAttachment() {
         Intent i = new Intent(Intent.ACTION_PICK, Contacts.CONTENT_URI);
         startActivityForResult(i, SELECT_ATTACHMENT_CONTACT);
+	}
+
+	private void selectLocationAttachment() {
+	    final LocationManager locationManager = (LocationManager) getActivity().getSystemService(Context.LOCATION_SERVICE);
+        Criteria criteria = new Criteria();
+        criteria.setAccuracy(Criteria.ACCURACY_FINE);
+        String provider = locationManager.getBestProvider(criteria, false);
+
+        LocationListener l = new LocationListener() {
+            public void onStatusChanged(String provider, int status, Bundle extras) {
+            }
+
+            public void onProviderEnabled(String provider) {
+            }
+
+            public void onProviderDisabled(String provider) {
+            }
+
+            public void onLocationChanged(Location location) {
+                Log.w(TAG, "location = " + location.getLatitude() + ", " + location.getLongitude());
+
+                locationManager.removeUpdates(this);
+
+                new TextMessageThread("Location", location).start();
+            }
+        };
+
+        locationManager.requestLocationUpdates(provider, 0, 0, l);
 	}
 
 	private void showSmileysPopup(View anchor) {
@@ -878,6 +933,10 @@ public class ComposeMessageFragment extends SherlockListFragment implements
 						R.string.copy_message_text);
 		}
 
+		if (msg instanceof LocationMessage) {
+            menu.add(CONTEXT_MENU_GROUP_ID, MENU_OPEN, MENU_OPEN, "Open in map");
+		}
+
 		menu.add(CONTEXT_MENU_GROUP_ID, MENU_DETAILS, MENU_DETAILS, R.string.menu_message_details);
 		menu.add(CONTEXT_MENU_GROUP_ID, MENU_DELETE, MENU_DELETE, R.string.delete_message);
 	}
@@ -962,7 +1021,17 @@ public class ComposeMessageFragment extends SherlockListFragment implements
 			}
 
 			case MENU_OPEN: {
-				openFile(msg);
+			    if (msg instanceof LocationMessage) {
+			        LocationMessage loc = (LocationMessage) msg;
+
+			        // String geo="http://maps.google.com/maps?q=loc:"+(loc.getLatitude()+1) + "," + loc.getLongitude() + "("+mConversation.getContact().getName()+")";
+			        String geo="geo:"+(loc.getLatitude()+1) + "," + loc.getLongitude() + "?q="+(loc.getLatitude()+1) + "," + loc.getLongitude()+"("+mConversation.getContact().getName()+")";
+			        Intent i=new Intent(Intent.ACTION_VIEW, Uri.parse(geo));
+			        startActivity(i);
+			    }
+			    else {
+			        openFile(msg);
+			    }
 				return true;
 			}
 		}

@@ -64,7 +64,9 @@ public abstract class AbstractMessage<T> {
         Messages.PREVIEW_PATH,
         Messages.ENCRYPTED,
         Messages.ENCRYPT_KEY,
-        Messages.LENGTH
+        Messages.LENGTH,
+        Messages.GEO_LAT,
+        Messages.GEO_LON
     };
 
     // these indexes matches MESSAGE_LIST_PROJECTION
@@ -85,6 +87,9 @@ public abstract class AbstractMessage<T> {
     public static final int COLUMN_ENCRYPTED = 14;
     public static final int COLUMN_ENCRYPT_KEY = 15;
     public static final int COLUMN_LENGTH = 16;
+    public static final int COLUMN_GEO_LAT= 17;
+    public static final int COLUMN_GEO_LON= 18;
+
 
     public static final String MSG_ID = "org.kontalk.message.id";
     public static final String MSG_SENDER = "org.kontalk.message.sender";
@@ -385,9 +390,19 @@ public abstract class AbstractMessage<T> {
         String mime = cursor.getString(COLUMN_MIME);
 
         if (PlainTextMessage.supportsMimeType(mime)) {
-            PlainTextMessage msg = PlainTextMessage.obtain(context);
-            msg.populateFromCursor(cursor);
-            return msg;
+
+            boolean isLoc = !cursor.isNull(COLUMN_GEO_LAT);
+
+            if (isLoc) {
+                LocationMessage msg = new LocationMessage(context);
+                msg.populateFromCursor(cursor);
+                return msg;
+            }
+            else {
+                PlainTextMessage msg = PlainTextMessage.obtain(context);
+                msg.populateFromCursor(cursor);
+                return msg;
+            }
         }
 
         else if (ImageMessage.supportsMimeType(mime)) {

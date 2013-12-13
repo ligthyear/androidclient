@@ -84,6 +84,8 @@ public final class MyMessages {
         public static final String ENCRYPTED = "encrypted";
         public static final String ENCRYPT_KEY = "encrypt_key";
         public static final String LENGTH = "length";
+        public static final String GEO_LAT = "geo_lat";
+        public static final String GEO_LON = "geo_lon";
 
         // not DESC here because the listview is reverse-stacked
         public static final String DEFAULT_SORT_ORDER = "timestamp";
