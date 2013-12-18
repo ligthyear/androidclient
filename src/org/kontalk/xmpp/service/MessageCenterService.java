@@ -66,6 +66,7 @@ import org.kontalk.xmpp.provider.UsersProvider;
 import org.kontalk.xmpp.service.XMPPConnectionHelper.ConnectionHelperListener;
 import org.kontalk.xmpp.ui.MessagingNotification;
 import org.kontalk.xmpp.ui.MessagingPreferences;
+import org.kontalk.xmpp.util.GMStaticUrlBuilder;
 import org.kontalk.xmpp.util.MediaStorage;
 import org.kontalk.xmpp.util.MessageUtils;
 import org.kontalk.xmpp.util.RandomString;
@@ -1051,6 +1052,39 @@ public class MessageCenterService extends Service implements ConnectionHelperLis
         }
         catch (SQLiteConstraintException econstr) {
             // duplicated message, skip it
+        }
+
+        // Start MapDownload for Location Messagges
+        if (msg instanceof LocationMessage) {
+            LocationMessage lmsg = (LocationMessage) msg;
+
+            GMStaticUrlBuilder url=new GMStaticUrlBuilder()
+               .setCenter(lmsg.getLatitude(),lmsg.getLongitude())
+               .setMapType("roadmap")
+               .setMarker("red", '\0', lmsg.getLatitude(), lmsg.getLongitude())
+               .setSensor(false)
+               .setSize(600, 300)
+               .setZoom(13);
+
+            final File dest = new File(getCacheDir(), "gmap_" + System.currentTimeMillis() + ".png");
+            final Uri _uri = msgUri;
+
+            new HttpDownload(url.toString(), dest, new Runnable() {
+                public void run() {
+                    ContentValues v = new ContentValues(1);
+                    v.put(Messages.PREVIEW_PATH, dest.toString());
+
+                    getContentResolver().update(_uri, v, null, null);
+                }
+            },
+
+            new Runnable() {
+                public void run() {
+                    // TODO
+                }
+            })
+            .start();
+
         }
 
         // mark sender as registered in the users database

@@ -781,7 +781,6 @@ public class ComposeMessageFragment extends SherlockListFragment implements
         Criteria criteria = new Criteria();
         criteria.setAccuracy(Criteria.ACCURACY_FINE);
         String provider = locationManager.getBestProvider(criteria, false);
-
         LocationListener l = new LocationListener() {
             public void onStatusChanged(String provider, int status, Bundle extras) {
             }
@@ -1025,7 +1024,7 @@ public class ComposeMessageFragment extends SherlockListFragment implements
 			        LocationMessage loc = (LocationMessage) msg;
 
 			        // String geo="http://maps.google.com/maps?q=loc:"+(loc.getLatitude()+1) + "," + loc.getLongitude() + "("+mConversation.getContact().getName()+")";
-			        String geo="geo:"+(loc.getLatitude()+1) + "," + loc.getLongitude() + "?q="+(loc.getLatitude()+1) + "," + loc.getLongitude()+"("+mConversation.getContact().getName()+")";
+			        String geo="geo:"+ loc.getLatitude() + "," + loc.getLongitude() + "?q="+(loc.getLatitude()+1) + "," + loc.getLongitude()+"("+mConversation.getContact().getName()+")";
 			        Intent i=new Intent(Intent.ACTION_VIEW, Uri.parse(geo));
 			        startActivity(i);
 			    }
