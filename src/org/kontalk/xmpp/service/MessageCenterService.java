@@ -754,7 +754,9 @@ public class MessageCenterService extends Service implements ConnectionHelperLis
                 Messages.FETCH_URL,
                 Messages.PREVIEW_PATH,
                 Messages.ENCRYPT_KEY,
-                Messages.LENGTH
+                Messages.LENGTH,
+                Messages.GEO_LAT,
+                Messages.GEO_LON,
             },
             filter.toString(),
             null, Messages._ID);
@@ -783,6 +785,14 @@ public class MessageCenterService extends Service implements ConnectionHelperLis
             b.putString("org.kontalk.message.toUser", userId);
             b.putString("org.kontalk.message.encryptKey", key);
             b.putLong("org.kontalk.message.length", length);
+
+            if (!c.isNull(9)&&!c.isNull(10))
+            {
+                Location location = new Location("");
+                location.setLatitude(c.getDouble(9));
+                location.setLongitude(c.getDouble(10));
+                b.putParcelable("org.kontalk.message.location", location);
+            }
 
             // message has already been uploaded - just send media
             if (fetchUrl != null) {

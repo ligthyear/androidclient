@@ -35,12 +35,15 @@ import android.content.ContentResolver;
 import android.content.Context;
 import android.content.Intent;
 import android.database.Cursor;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.graphics.Color;
 import android.graphics.Typeface;
 import android.graphics.drawable.BitmapDrawable;
 import android.media.AudioManager;
 import android.net.Uri;
 import android.support.v4.app.NotificationCompat;
+import android.support.v4.app.NotificationCompat.BigPictureStyle;
 import android.support.v4.app.NotificationCompat.BigTextStyle;
 import android.support.v4.app.NotificationCompat.InboxStyle;
 import android.support.v4.app.NotificationCompat.Style;
@@ -68,6 +71,7 @@ public class MessagingNotification {
         Messages.THREAD_ID,
         CommonColumns.PEER,
         CommonColumns.CONTENT,
+        Messages.PREVIEW_PATH,
     };
 
     private static final String[] THREADS_UNREAD_PROJECTION =
@@ -186,6 +190,7 @@ public class MessagingNotification {
 
         if (supportsBigNotifications()) {
             Map<String, CharSequence[]> convs = new HashMap<String, CharSequence[]>();
+            String previewPath = null;
 
             String peer = null;
             long id = 0;
@@ -194,6 +199,7 @@ public class MessagingNotification {
                 id = c.getLong(0);
                 peer = c.getString(1);
                 byte[] content = c.getBlob(2);
+                previewPath = c.getString(3);
 
                 CharSequence[] b = convs.get(peer);
                 if (b == null) {
@@ -277,10 +283,18 @@ public class MessagingNotification {
                 String content = convs.get(peer)[0].toString();
                 CharSequence last = convs.get(peer)[1];
 
-                // big text content
-                style = new BigTextStyle();
-                ((BigTextStyle) style).bigText(content);
-                ((BigTextStyle) style).setSummaryText(Authenticator.getDefaultAccount(context).name);
+                if (unread == 1 && previewPath != null) {
+                    Bitmap b=BitmapFactory.decodeFile(previewPath);
+                    style = new BigPictureStyle();
+                    ((BigPictureStyle) style).bigPicture(b);
+                }
+
+                else {
+                    // big text content
+                    style = new BigTextStyle();
+                    ((BigTextStyle) style).bigText(content);
+                    ((BigTextStyle) style).setSummaryText(Authenticator.getDefaultAccount(context).name);
+                }
 
                 // ticker
                 Contact contact = Contact.findByUserId(context, peer);
